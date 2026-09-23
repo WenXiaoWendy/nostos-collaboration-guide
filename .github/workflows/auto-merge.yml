@@ -21,20 +21,21 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          invalid_count="$(
-            gh api --paginate --slurp \
+          invalid_files="$(
+            gh api --paginate \
               "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" \
-              --jq '[.[][] |
+              --jq '.[] |
                 select(
                   .filename |
                   test("^(世界/[^/]+\\.md|世界/地点/[^/]+/[^/]+\\.md|职业/index\\.md|职业/[^/]+/[^/]+\\.md)$") |
                   not
-                )
-              ] | length'
+                ) |
+                .filename'
           )"
 
-          if [ "$invalid_count" -ne 0 ]; then
+          if [ -n "$invalid_files" ]; then
             echo "::error::投稿只能修改世界目录中的 Markdown，或地点、职业子目录中的 Markdown 文件"
+            printf '%s\n' "$invalid_files"
             exit 1
           fi
 
