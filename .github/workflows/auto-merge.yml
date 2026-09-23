@@ -27,14 +27,14 @@ jobs:
               --jq '[.[][] |
                 select(
                   .filename |
-                  test("^(世界/[^/]+\\.md|世界/地点/[^/]+\\.md|职业/[^/]+\\.md)$") |
+                  test("^(世界/[^/]+\\.md|世界/地点/[^/]+/[^/]+\\.md|职业/[^/]+/[^/]+\\.md)$") |
                   not
                 )
               ] | length'
           )"
 
           if [ "$invalid_count" -ne 0 ]; then
-            echo "::error::投稿只能修改世界、世界/地点或职业目录中的 Markdown 文件"
+            echo "::error::投稿只能修改世界目录中的 Markdown，或地点、职业子目录中的 Markdown 文件"
             exit 1
           fi
 
