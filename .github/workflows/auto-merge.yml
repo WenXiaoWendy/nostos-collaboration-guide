@@ -1,0 +1,50 @@
+name: 自动合并攻略投稿
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: 检查并合并
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检查投稿文件范围
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          invalid_count="$(
+            gh api --paginate --slurp \
+              "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" \
+              --jq '[.[][] |
+                select(
+                  .filename |
+                  test("^(世界/[^/]+\\.md|世界/地点/[^/]+\\.md|职业/[^/]+\\.md)$") |
+                  not
+                )
+              ] | length'
+          )"
+
+          if [ "$invalid_count" -ne 0 ]; then
+            echo "::error::投稿只能修改世界、世界/地点或职业目录中的 Markdown 文件"
+            exit 1
+          fi
+
+      - name: 自动合并
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr merge "$PR_URL" \
+            --auto \
+            --squash \
+            --match-head-commit "$HEAD_SHA"
